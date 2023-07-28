@@ -12,14 +12,7 @@ namespace ChessChallenge.Example;
 
 public class NetworkedBot : IChessBot
 {
-    public const string ROOM_ID = "";
-    
-    
-    public const string PROTOCOL_VERSION = "0.1";
-
-    public const string SERVER_HOSTNAME = "chess.britto.tech";
-    public const int SERVER_PORT = 4578;
-
+    public const string ROOM_ID = "Room1";
 
     private GameSettings? _gameSettings = null;
     private bool _inGame = false;

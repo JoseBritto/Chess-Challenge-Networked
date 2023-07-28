@@ -20,6 +20,11 @@ namespace ChessChallenge.Application
         public const int MaxTokenCount = 1024;
         public const LogType MessagesToLog = LogType.All;
 
+        // Network Settings
+        public const string NetworkingProtocolVersion = "0.1";
+        public const string ServerHostname = "chess.britto.tech";
+        public const int ServerPort = 4578;
+
         public enum LogType
         {
             None,
