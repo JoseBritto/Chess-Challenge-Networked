@@ -44,8 +44,8 @@ namespace ChessChallenge.Application
 
                 if (NextButtonInRow($"Join {roomIdDisplay}", ref buttonPos, spacing, buttonSize))
                 {
-                    ServerConnectionHelper.ConnectToServerAsync(NetworkedBot.SERVER_HOSTNAME, NetworkedBot.SERVER_PORT,
-                        NetworkedBot.ROOM_ID, NetworkedBot.PROTOCOL_VERSION).Wait();
+                    ServerConnectionHelper.ConnectToServerAsync(Settings.ServerHostname, Settings.ServerPort,
+                        NetworkedBot.ROOM_ID, Settings.NetworkingProtocolVersion).Wait();
                     if (ServerConnectionHelper.StartsOffWhite)
                         controller.StartNewBotMatch(ChallengeController.PlayerType.NetworkedBot,
                             ChallengeController.PlayerType.MyBot);
