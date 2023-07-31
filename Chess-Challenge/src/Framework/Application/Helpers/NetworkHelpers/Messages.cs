@@ -3,6 +3,58 @@ using System.Text;
 
 namespace ChessChallenge.Application.NetworkHelpers;
 
+
+public struct NextUp : ISerializableMessage
+{
+    public string NextMessageTypeName;
+    public void SerializeIntoStream(Stream stream)
+    {
+        using var writer = new BinaryWriter(stream, Encoding.UTF8, true);
+        writer.Write(NextMessageTypeName);
+    }
+
+    public void ReadFromStream(Stream stream)
+    {
+        using var reader = new BinaryReader(stream, Encoding.UTF8,  true);
+        NextMessageTypeName = reader.ReadString();
+    }
+}
+
+public struct TimeSyncRequest : ISerializableMessage
+{
+    public long ClientTicks;
+    public void SerializeIntoStream(Stream stream)
+    {
+        using var writer = new BinaryWriter(stream, Encoding.UTF8, true);
+        writer.Write(ClientTicks);
+    }
+
+    public void ReadFromStream(Stream stream)
+    {
+        using var reader = new BinaryReader(stream, Encoding.UTF8,  true);
+        ClientTicks = reader.ReadInt64();
+    }
+}
+
+public struct ServerTimeSyncResponse : ISerializableMessage
+{
+    public long ClientTicks;
+    public long TicksAfterGameStart;
+    public void SerializeIntoStream(Stream stream)
+    {
+        using var writer = new BinaryWriter(stream, Encoding.UTF8, true);
+        writer.Write(ClientTicks);
+        writer.Write(TicksAfterGameStart);
+    }
+
+    public void ReadFromStream(Stream stream)
+    {
+        using var reader = new BinaryReader(stream, Encoding.UTF8,  true);
+        ClientTicks = reader.ReadInt64();
+        TicksAfterGameStart = reader.ReadInt64();
+    }
+}
+
 public struct ServerHelloMsg : ISerializableMessage
 {
     public string ProtocolVersion;
