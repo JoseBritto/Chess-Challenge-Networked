@@ -10,7 +10,7 @@ namespace ChessChallenge.Application.NetworkHelpers;
 public static class ServerConnectionHelper
 {
     public static bool StartsOffWhite { get; private set; }
-    public static TcpClient TcpClient { get; private set; }
+    public static TcpClient? TcpClient { get; private set; }
 
     public static async Task ConnectToServerAsync(string host, int port, string roomId, string protocolVersion)
     {
@@ -74,7 +74,19 @@ public static class ServerConnectionHelper
             TcpClient.Dispose();
         }
     }
-    
+
+    public static void Disconnect()
+    {
+        try
+        {
+            TcpClient?.Close();
+            TcpClient = null;
+        }
+        catch
+        {
+            //ignored
+        }
+    }
 
     private static bool VerifyServer(ServerHelloMsg serverHelloMsg, string protocolVersion) 
         => serverHelloMsg.ProtocolVersion == protocolVersion;

@@ -8,6 +8,7 @@ using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using ChessChallenge.Application.NetworkHelpers;
 using static ChessChallenge.Application.Settings;
 using static ChessChallenge.Application.ConsoleHelper;
 
@@ -84,6 +85,10 @@ namespace ChessChallenge.Application
             // End any ongoing game
             EndGame(GameResult.DrawByArbiter, log: false, autoStartNextBotMatch: false);
             gameID = rng.Next();
+            
+            // Disconnect from server if not playing with Networked Bot
+            if(whiteType != PlayerType.NetworkedBot && blackType != PlayerType.NetworkedBot)
+                ServerConnectionHelper.Disconnect();
 
             // Stop prev task and create a new one
             if (RunBotsOnSeparateThread)
