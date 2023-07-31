@@ -1,5 +1,7 @@
 using System;
+using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,8 +28,10 @@ public class NetworkedBot : IChessBot
 
         if (!(ServerConnectionHelper.TcpClient?.Connected ?? false))
         {
+            ConsoleHelper.Log("Not Connected to server!", true, ConsoleColor.Red);
             return;
         }
+        
         // Reset time until other player joins
         Task.Run(() =>
         {
@@ -39,35 +43,47 @@ public class NetworkedBot : IChessBot
                 Task.Delay(2000, cancelSource.Token).Wait(cancelSource.Token);
             }
         }, cancelSource.Token);
-        
-        _gameSettings ??= ServerConnectionHelper.ReadMessage<GameSettings>();
 
-        if (_gameSettings.Value.IsWhite != board.IsWhiteToMove)
+        GameStart start;
+        try
         {
-            throw new Exception("Game state not synced!");
-        }
 
-        if (board.IsWhiteToMove)
-        {
-            Console.WriteLine("I am white");
-        }
-        else
-        {
-            Console.WriteLine("I am black");
-        }
-        ServerConnectionHelper.SendMessage(new IsReady
-        {
-            isReady = true
-        });
-        
-        var start = ServerConnectionHelper.ReadMessage<GameStart>(); // Wait for start
-        
-        Console.WriteLine("Game Started!");
-        cancelSource.Cancel();
+            _gameSettings ??= ServerConnectionHelper.ReadMessage<GameSettings>();
 
+            if (_gameSettings.Value.IsWhite != board.IsWhiteToMove)
+            {
+                throw new Exception("Game state not synced!");
+            }
+
+            Console.WriteLine(board.IsWhiteToMove ? "Remote Player is White" : "Remote Player is Black");
+
+            ServerConnectionHelper.SendMessage(new IsReady
+            {
+                isReady = true
+            });
+
+            start = ServerConnectionHelper.ReadMessage<GameStart>(); // Wait for start
+
+            Console.WriteLine("Game Started!");
+            cancelSource.Cancel();
+        }
+        catch (Exception e) when (e is IOException or SocketException)
+        {
+            ConsoleHelper.Log("Connection with the server ended!", true, ConsoleColor.Red);
+            ServerConnectionHelper.Disconnect();
+            return;
+        }
+        catch (Exception e)
+        {
+            ConsoleHelper.Log($"Failed to start game due to exception: {e}", isError: true, ConsoleColor.Red);
+            ServerConnectionHelper.Disconnect();
+            return;
+        }
+        
         SetSecondsElapsed(new TimeSpan(DateTime.UtcNow.Ticks - start.Timestamp).TotalSeconds);
 
         _inGame = true;
+        
     }
     
     public Move Think(Board board, Timer timer)
@@ -80,15 +96,33 @@ public class NetworkedBot : IChessBot
             ConsoleHelper.Log("Failed to start game!");
             return Move.NullMove;
         }
-        
+
         if (board.GameMoveHistory.Length > 0)
         {
             var opponentsMove = board.GameMoveHistory.Last();
 
-            SendMove(opponentsMove, false);
+            try
+            {
+                SendMove(opponentsMove, false);
+            }
+            catch (Exception e)
+            {
+                ConsoleHelper.Log("Connection lost!", true, ConsoleColor.Red);
+                Task.Delay(timer.MillisecondsRemaining + 100); // wait for us to timeout so as to not produce any errors
+                return Move.NullMove;
+            }
         }
-            
-        _latestKnownMove = WaitForNetworkMoveReceive(board);
+
+        try
+        {
+            _latestKnownMove = WaitForNetworkMoveReceive(board);
+        }
+        catch (Exception e)
+        {
+            ConsoleHelper.Log("Connection lost!", true, ConsoleColor.Red);
+            Task.Delay(timer.MillisecondsRemaining + 100);
+            return Move.NullMove;
+        }
 
         if (_latestKnownMove != Move.NullMove) 
             return _latestKnownMove; 
@@ -107,14 +141,29 @@ public class NetworkedBot : IChessBot
         
         var lastMove = board.GameMoveHistory.Last();
 
-        if (lastMove.ToString() == _latestKnownMove.ToString())
+        try
         {
-            // This is probably a timeout so send a null move
-            SendMove(Move.NullMove,  true);
-            return; 
-        }
 
-        SendMove(lastMove, true);
+            if (lastMove.ToString() == _latestKnownMove.ToString())
+            {
+                // This is probably a timeout so send a null move
+                SendMove(Move.NullMove, true);
+                return;
+            }
+
+            SendMove(lastMove, true);
+
+        }
+        catch (NullReferenceException e)
+        {
+            ConsoleHelper.Log($"Null reference error {e}",false, ConsoleColor.Red);
+            return;
+        }
+        catch (Exception)
+        {
+            ConsoleHelper.Log("Connection lost!", true, ConsoleColor.Red);
+            return;
+        }
         
         Console.WriteLine($"Is Checkmate: {board.IsInCheckmate()}");
         Console.WriteLine($"Is Draw: {board.IsDraw()}");
