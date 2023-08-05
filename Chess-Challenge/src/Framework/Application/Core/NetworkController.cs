@@ -110,11 +110,11 @@ public class NetworkController
 
         var msg = GetNextMessage();
 
-        ConsoleHelper.Log(msg?.GetType().ToString() ?? "null message");
         switch (msg)
         {
             case PingMsg:
-                SendMessage(new Ack());
+                SendMessage(new PingMsg());
+                ConsoleHelper.Log("Ping!");
                 break;
             case Ack:
                 if(_expectingAnAck)
@@ -217,7 +217,15 @@ public class NetworkController
         unReadMessage = null;
         _readingTask = Task.Run(() =>
         {
-            unReadMessage = _stream.DecodeNextMessage(_streamReadCancellationSource.Token);
+            try
+            {
+                unReadMessage = _stream.DecodeNextMessage(_streamReadCancellationSource.Token);
+            }
+            catch
+            {
+                unReadMessage = null;
+                //ignored
+            }
         });
     }
 
