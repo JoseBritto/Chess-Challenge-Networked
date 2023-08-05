@@ -36,7 +36,8 @@ namespace ChessChallenge.Application
 
         public void UpdateClock(double dt)
         {
-            secondsElapsed += dt;
+            if(NetworkController.Instance.State != NetworkController.NetworkState.GameOnGoing)
+                secondsElapsed += dt;
         }
 
         public int TimeRemainingMs
