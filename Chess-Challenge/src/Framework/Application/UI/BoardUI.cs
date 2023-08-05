@@ -202,6 +202,8 @@ namespace ChessChallenge.Application
             }
 
             DrawBorder();
+            
+            //TODO: Display state according to NetworkController
             ForEachSquare(DrawSquare);
             
             if (isAnimatingMove)
@@ -219,6 +221,7 @@ namespace ChessChallenge.Application
                 DrawPiece(board.Square[dragSquare], dragPos - new Vector2(squareSize * 0.5f, squareSize * 0.5f));
             }
 
+          //  UIHelper.DrawText("Please Wait", new Vector2(-100, 0), 50, 0, Color.RED);
 
             // Reset state
             isDraggingPiece = false;

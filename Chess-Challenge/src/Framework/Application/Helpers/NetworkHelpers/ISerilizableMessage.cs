@@ -4,6 +4,7 @@ namespace ChessChallenge.Application.NetworkHelpers;
 
 public interface ISerializableMessage
 {
+    public byte RefCode { get; }
     public byte[] SerializeAsArray()
     {
         using var stream = new MemoryStream();

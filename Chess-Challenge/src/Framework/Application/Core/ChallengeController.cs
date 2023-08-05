@@ -39,7 +39,7 @@ namespace ChessChallenge.Application
         public bool HumanWasWhiteLastGame { get; private set; }
 
         // Bot match state
-        readonly string[] botMatchStartFens;
+        public readonly string[] botMatchStartFens;
         int botMatchGameIndex;
         public BotMatchStats BotStatsA { get; private set; }
         public BotMatchStats BotStatsB {get;private set;}
@@ -58,6 +58,9 @@ namespace ChessChallenge.Application
         readonly StringBuilder pgns;
 
         public static ChallengeController Instance { get; private set; }
+        public bool IsOnlineGame => PlayerBlack.Bot is NetworkedBot || PlayerWhite.Bot is NetworkedBot;
+
+        
         public ChallengeController()
         {
             Log($"Launching Chess-Challenge version {Settings.Version}");
@@ -79,16 +82,17 @@ namespace ChessChallenge.Application
 
             StartNewGame(PlayerType.Human, PlayerType.MyBot);
         }
-
-        public void StartNewGame(PlayerType whiteType, PlayerType blackType)
+        // TODO: Validate startFen somewhere
+        public void StartNewGame(PlayerType whiteType, PlayerType blackType, 
+            string? startFen = null, int baseTimeMs = GameDurationMilliseconds)
         {
             // End any ongoing game
             EndGame(GameResult.DrawByArbiter, log: false, autoStartNextBotMatch: false);
             gameID = rng.Next();
             
             // Disconnect from server if not playing with Networked Bot
-            if(whiteType != PlayerType.NetworkedBot && blackType != PlayerType.NetworkedBot)
-                ServerConnectionHelper.Disconnect();
+            /*if(whiteType != PlayerType.NetworkedBot && blackType != PlayerType.NetworkedBot)
+                ServerConnectionHelper.Disconnect();*/
 
             // Stop prev task and create a new one
             if (RunBotsOnSeparateThread)
@@ -103,11 +107,11 @@ namespace ChessChallenge.Application
             board = new Board();
             bool isGameWithHuman = whiteType is PlayerType.Human || blackType is PlayerType.Human;
             int fenIndex = isGameWithHuman ? 0 : botMatchGameIndex / 2;
-            board.LoadPosition(botMatchStartFens[fenIndex]);
+            board.LoadPosition(startFen ?? botMatchStartFens[fenIndex]);
 
             // Player Setup
-            PlayerWhite = CreatePlayer(whiteType);
-            PlayerBlack = CreatePlayer(blackType);
+            PlayerWhite = CreatePlayer(whiteType, baseTimeMs);
+            PlayerBlack = CreatePlayer(blackType, baseTimeMs);
             PlayerWhite.SubscribeToMoveChosenEventIfHuman(OnMoveChosen);
             PlayerBlack.SubscribeToMoveChosenEventIfHuman(OnMoveChosen);
 
@@ -188,7 +192,15 @@ namespace ChessChallenge.Application
                     double startThinkTime = Raylib.GetTime();
                     var move = GetBotMove();
                     double thinkDuration = Raylib.GetTime() - startThinkTime;
-                    PlayerToMove.UpdateClock(thinkDuration);
+                    //If network game ongoing then server sets time, i.e, NetworkController
+                    if (NetworkController.Instance.State == NetworkController.NetworkState.GameOnGoing)
+                    {
+                        // Send the move over network
+                    }
+                    else
+                    {
+                        PlayerToMove.UpdateClock(thinkDuration);
+                    }
                     OnMoveChosen(move);
                 }
             }
@@ -212,13 +224,13 @@ namespace ChessChallenge.Application
             }
         }
 
-        ChessPlayer CreatePlayer(PlayerType type)
+        ChessPlayer CreatePlayer(PlayerType type, int baseTimeMs)
         {
             return type switch
             {
-                PlayerType.MyBot => new ChessPlayer(new MyBot(), type, GameDurationMilliseconds),
-                PlayerType.EvilBot => new ChessPlayer(new EvilBot(), type, GameDurationMilliseconds),
-                PlayerType.NetworkedBot => new ChessPlayer(new NetworkedBot(), type, GameDurationMilliseconds),
+                PlayerType.MyBot => new ChessPlayer(new MyBot(), type, baseTimeMs),
+                PlayerType.EvilBot => new ChessPlayer(new EvilBot(), type, baseTimeMs),
+                PlayerType.NetworkedBot => new ChessPlayer(new NetworkedBot(), type, baseTimeMs),
                 _ => new ChessPlayer(new HumanPlayer(boardUI), type)
             };
         }
@@ -238,6 +250,17 @@ namespace ChessChallenge.Application
             {
                 if (PlayerToMove.IsBot)
                 {
+                    if(NetworkController.Instance.State == NetworkController.NetworkState.GameOnGoing 
+                       && PlayerToMove.Bot is MyBot) // We don't want to sent networkedbot's move again
+                    {
+                        NetworkController.Instance.SendMessage(new MoveMessage
+                        {
+                            MoveName = MoveUtility.GetMoveNameUCI(chosenMove),
+                            OpponentClockElapsed = 0, // We are client so no need to set these
+                            YourClockElapsed = 0,
+                        });
+                    }
+                    
                     moveToPlay = chosenMove;
                     isWaitingToPlayMove = true;
                     playMoveTime = lastMoveMadeTime + MinMoveDelay;
@@ -253,7 +276,8 @@ namespace ChessChallenge.Application
                 string log = $"Illegal move: {moveName} in position: {FenUtility.CurrentFen(board)}";
                 Log(log, true, ConsoleColor.Red);
                 GameResult result = PlayerToMove == PlayerWhite ? GameResult.WhiteIllegalMove : GameResult.BlackIllegalMove;
-                EndGame(result);
+                EndGame(result, 
+                    autoStartNextBotMatch: NetworkController.Instance.State != NetworkController.NetworkState.GameOnGoing);
             }
         }
 
@@ -274,18 +298,26 @@ namespace ChessChallenge.Application
                 }
                 else
                 {
-                    EndGame(result);
+                    EndGame(result, 
+                        autoStartNextBotMatch: NetworkController.Instance.State != NetworkController.NetworkState.GameOnGoing);
                 }
             }
         }
 
-        void EndGame(GameResult result, bool log = true, bool autoStartNextBotMatch = true)
+        public void EndGame(GameResult result, bool log = true, bool autoStartNextBotMatch = true)
         {
             if (isPlaying)
             {
                 isPlaying = false;
                 isWaitingToPlayMove = false;
                 gameID = -1;
+
+                // Disconnect if it was online game
+                if (NetworkController.Instance.State == NetworkController.NetworkState.GameOnGoing)
+                {
+                    NetworkController.Instance.GameOver(result);
+                }
+            
 
                 if (log)
                 {
@@ -320,7 +352,7 @@ namespace ChessChallenge.Application
                     botMatchGameIndex++;
                     int numGamesToPlay = botMatchStartFens.Length * 2;
 
-                    if (botMatchGameIndex < numGamesToPlay && autoStartNextBotMatch)
+                    if (botMatchGameIndex < numGamesToPlay && autoStartNextBotMatch) //TODO: Don't autostart online games
                     {
                         botAPlaysWhite = !botAPlaysWhite;
                         const int startNextGameDelayMs = 600;
@@ -386,7 +418,16 @@ namespace ChessChallenge.Application
                 PlayerToMove.UpdateClock(Raylib.GetFrameTime());
                 if (PlayerToMove.TimeRemainingMs <= 0)
                 {
-                    EndGame(PlayerToMove == PlayerWhite ? GameResult.WhiteTimeout : GameResult.BlackTimeout);
+                    if (NetworkController.Instance.State != NetworkController.NetworkState.GameOnGoing)
+                    {
+                        EndGame(PlayerToMove == PlayerWhite ? GameResult.WhiteTimeout : GameResult.BlackTimeout);
+                    }
+                    else
+                    {
+                        // It is the servers job to handle timing not ours
+                        Log("Client side timeout");
+                        PlayerToMove.secondsElapsed -= 1000;
+                    }
                 }
                 else
                 {
@@ -418,11 +459,17 @@ namespace ChessChallenge.Application
             MenuUI.DrawButtons(this);
             MatchStatsUI.DrawMatchStats(this);
         }
+        
+        static string GetPlayerName(ChessPlayer player)
+        {
+            if (player.PlayerType == PlayerType.NetworkedBot && NetworkController.Instance.OpponentName is not null)
+                return NetworkController.Instance.OpponentName;
 
-        static string GetPlayerName(ChessPlayer player) => GetPlayerName(player.PlayerType);
+            return GetPlayerName(player.PlayerType);
+        }
         static string GetPlayerName(PlayerType type) => type.ToString();
 
-        public void StartNewBotMatch(PlayerType botTypeA, PlayerType botTypeB)
+        public void StartNewBotMatch(PlayerType botTypeA, PlayerType botTypeB, string? startFen = null, int baseTimeMs = GameDurationMilliseconds)
         {
             EndGame(GameResult.DrawByArbiter, log: false, autoStartNextBotMatch: false);
             botMatchGameIndex = 0;
@@ -437,12 +484,12 @@ namespace ChessChallenge.Application
             BotStatsB = new BotMatchStats(nameB);
             botAPlaysWhite = true;
             Log($"Starting new match: {nameA} vs {nameB}", false, ConsoleColor.Blue);
-            StartNewGame(botTypeA, botTypeB);
+            StartNewGame(botTypeA, botTypeB, startFen, baseTimeMs);
         }
 
 
         public ChessPlayer PlayerToMove => board.IsWhiteToMove ? PlayerWhite : PlayerBlack;
-        ChessPlayer PlayerNotOnMove => board.IsWhiteToMove ? PlayerBlack : PlayerWhite;
+        public ChessPlayer PlayerNotOnMove => board.IsWhiteToMove ? PlayerBlack : PlayerWhite;
 
         public int TotalGameCount => botMatchStartFens.Length * 2;
         public int CurrGameNumber => Math.Min(TotalGameCount, botMatchGameIndex + 1);

@@ -11,8 +11,8 @@ namespace ChessChallenge.Application
         public readonly IChessBot? Bot;
         public readonly HumanPlayer? Human;
 
-        double secondsElapsed;
-        int baseTimeMS;
+        public double secondsElapsed;
+        public int baseTimeMS;
 
         public ChessPlayer(object instance, ChallengeController.PlayerType type, int baseTimeMS = int.MaxValue)
         {
