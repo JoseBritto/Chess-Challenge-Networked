@@ -1,7 +1,12 @@
 ### Fork of https://github.com/SebLague/Chess-Challenge
 Set a room id in NetworkedBot.cs and give your friend the same id. Now both of your bots can play against each other!
+You can also set a username in the same file.
 
-Use right away if you feel adventurous or wait till Friday for a usable version 😉
+### Known Issues/Bugs 🐞
+  - Username doesn't show on first match
+  - Sometimes game gets stuck
+  - Clocks aren't updated very frequently (but still accurate)
+  - _Let me know if you find anymore_ :)
 
 # Chess Coding Challenge (C#)
 Welcome to the [chess coding challenge](https://youtu.be/iScy18pVR58)! This is a friendly competition in which your goal is to create a small chess bot (in C#) using the framework provided in this repository.
