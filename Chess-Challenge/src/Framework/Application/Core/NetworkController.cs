@@ -152,7 +152,8 @@ public class NetworkController
                 ConsoleHelper.Log($"Remote shutdown: {shutdownMsg.Reason}");
                 Disconnect(false);
                 State = NetworkState.NotConnected;
-                break;//TODO: End ay ongoing games
+                ChallengeController.Instance.EndGame(GameResult.DrawByArbiter, false, false);
+                break;
             case PlayerLeft:
                 ConsoleHelper.Log("Player left");
                 OpponentName = null;

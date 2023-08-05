@@ -344,7 +344,7 @@ namespace ChessChallenge.Application
                     botMatchGameIndex++;
                     int numGamesToPlay = botMatchStartFens.Length * 2;
 
-                    if (botMatchGameIndex < numGamesToPlay && autoStartNextBotMatch) //TODO: Don't autostart online games
+                    if (botMatchGameIndex < numGamesToPlay && autoStartNextBotMatch)
                     {
                         botAPlaysWhite = !botAPlaysWhite;
                         const int startNextGameDelayMs = 600;

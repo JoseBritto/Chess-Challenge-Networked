@@ -272,7 +272,6 @@ public struct GameStart : ISerializableMessage
 
 public struct MoveMessage : ISerializableMessage
 {
-    //TODO: Handle timeout somehow
     public string MoveName;
     public long YourClockElapsed; // Time left on clock for mybot
     public long OpponentClockElapsed; // Time left on clock for networked
