@@ -21,7 +21,7 @@ namespace ChessChallenge.Application
         public const LogType MessagesToLog = LogType.All;
 
         // Network Settings
-        public const string NetworkingProtocolVersion = "0.1";
+        public const string NetworkingProtocolVersion = "0.2";
         public const string ServerHostname = "127.0.0.1";
         public const int ServerPort = 4578;
 
