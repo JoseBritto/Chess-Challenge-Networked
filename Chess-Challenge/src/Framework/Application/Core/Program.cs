@@ -2,6 +2,7 @@
 using System.IO;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 
 namespace ChessChallenge.Application
 {
@@ -31,6 +32,9 @@ namespace ChessChallenge.Application
 
             ChallengeController controller = new();
 
+            _ = new NetworkController(); // Create the first network controller instance
+           
+            // Task.Run(() => networkController.StartAsync(null,null));
             while (!Raylib.WindowShouldClose())
             {
                 Raylib.BeginDrawing();
@@ -38,6 +42,8 @@ namespace ChessChallenge.Application
                 Raylib.BeginMode2D(cam);
 
                 controller.Update();
+                NetworkController.Instance.Update();
+                
                 controller.Draw();
 
                 Raylib.EndMode2D();

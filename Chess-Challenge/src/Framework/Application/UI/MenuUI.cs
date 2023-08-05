@@ -23,17 +23,21 @@ namespace ChessChallenge.Application
                 var whiteType = controller.HumanWasWhiteLastGame ? ChallengeController.PlayerType.MyBot : ChallengeController.PlayerType.Human;
                 var blackType = !controller.HumanWasWhiteLastGame ? ChallengeController.PlayerType.MyBot : ChallengeController.PlayerType.Human;
                 controller.StartNewGame(whiteType, blackType);
+                NetworkController.Instance.UnFocused();
             }
             if (NextButtonInRow("MyBot vs MyBot", ref buttonPos, spacing, buttonSize))
             {
                 controller.StartNewBotMatch(ChallengeController.PlayerType.MyBot, ChallengeController.PlayerType.MyBot);
+                NetworkController.Instance.UnFocused();
             }
             if (NextButtonInRow("MyBot vs EvilBot", ref buttonPos, spacing, buttonSize))
             {
                 controller.StartNewBotMatch(ChallengeController.PlayerType.MyBot, ChallengeController.PlayerType.EvilBot);
+                NetworkController.Instance.UnFocused();
             }
 
-            if(!string.IsNullOrWhiteSpace(NetworkedBot.ROOM_ID) && !(ServerConnectionHelper.TcpClient?.Connected ?? false))
+            if(!string.IsNullOrWhiteSpace(NetworkedBot.ROOM_ID) 
+               && NetworkController.Instance.State == NetworkController.NetworkState.NotConnected)
             {
                 // Page buttons
                 buttonPos.Y += breakSpacing;
@@ -41,19 +45,10 @@ namespace ChessChallenge.Application
 
                 if (roomIdDisplay.Length > 14)
                     roomIdDisplay = new string(roomIdDisplay.Take(12).ToArray()) + "..";
-
+                
                 if (NextButtonInRow($"Join {roomIdDisplay}", ref buttonPos, spacing, buttonSize))
                 {
-                    ServerConnectionHelper.ConnectToServerAsync(Settings.ServerHostname, Settings.ServerPort,
-                        NetworkedBot.ROOM_ID, Settings.NetworkingProtocolVersion).Wait();
-                    if (ServerConnectionHelper.StartsOffWhite)
-                        controller.StartNewBotMatch(ChallengeController.PlayerType.NetworkedBot,
-                            ChallengeController.PlayerType.MyBot);
-                    else
-                    {
-                        controller.StartNewBotMatch(ChallengeController.PlayerType.MyBot,
-                            ChallengeController.PlayerType.NetworkedBot);
-                    }
+                    NetworkController.Instance.JoinRoomPressed();
                 }
             }
             // Page buttons
@@ -93,6 +88,7 @@ namespace ChessChallenge.Application
             }
             if (NextButtonInRow("Exit (ESC)", ref buttonPos, spacing, buttonSize))
             {
+                NetworkController.Instance.UnFocused();
                 Environment.Exit(0);
             }
 
