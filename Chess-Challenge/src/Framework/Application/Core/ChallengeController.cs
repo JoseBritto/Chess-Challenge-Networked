@@ -192,15 +192,7 @@ namespace ChessChallenge.Application
                     double startThinkTime = Raylib.GetTime();
                     var move = GetBotMove();
                     double thinkDuration = Raylib.GetTime() - startThinkTime;
-                    //If network game ongoing then server sets time, i.e, NetworkController
-                    if (NetworkController.Instance.State == NetworkController.NetworkState.GameOnGoing)
-                    {
-                        // Send the move over network
-                    }
-                    else
-                    {
-                        PlayerToMove.UpdateClock(thinkDuration);
-                    }
+                    PlayerToMove.UpdateClock(thinkDuration);
                     OnMoveChosen(move);
                 }
             }
