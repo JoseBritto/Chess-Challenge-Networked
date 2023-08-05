@@ -18,7 +18,7 @@ namespace ChessChallenge.Example;
 public class NetworkedBot : IChessBot
 {
     public const string ROOM_ID = "Room1";
-    public static readonly string UserName = $"Bob {Random.Shared.Next(1, 99)}";
+    public static readonly string UserName = $"Bob 99";
     public Move Think(Board board, Timer timer)
     {
         while (NetworkController.Instance.NextMove == null)
