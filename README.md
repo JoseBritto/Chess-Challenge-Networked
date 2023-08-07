@@ -3,7 +3,7 @@ Set a room id in NetworkedBot.cs and give your friend the same id. Now both of y
 You can also set a username in the same file.
 
 ### Known Issues/Bugs 🐞
-  - Username doesn't show on first match
+  - Username doesn't show on first match (fixed - I think)
   - Sometimes game gets stuck
   - Clocks aren't updated very frequently (but still accurate)
   - Autostart next game not working
